@@ -3,14 +3,7 @@
 
 // Layout is available here:
 // http://www.keyboard-layout-editor.com/#/gists/86c6c319c8e7ca76c121cdbc5a183e4e
-#include "planck.h"
-#include "action_layer.h"
-#ifdef AUDIO_ENABLE
-  #include "audio.h"
-#endif
-#include "eeconfig.h"
-
-extern keymap_config_t keymap_config;
+#include QMK_KEYBOARD_H
 
 // Each layer gets a name for readability, which is then used in the keymap matrix below.
 // The underscores don't mean anything - you can have a layer called STUFF or any other name.
@@ -30,10 +23,6 @@ enum planck_keycodes {
   DBLQ,
   ITERML, ITERMD, ITERMU, ITERMR
 };
-
-// Fillers to make layering more clear
-#define _______ KC_TRNS
-#define XXXXXXX KC_NO
 
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 
@@ -68,9 +57,9 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
  */
 [_RAISE] = {
   {KC_GRV,  KC_1,    KC_2,    KC_3,    KC_4,    KC_5,    KC_6,    KC_7,    KC_8,    KC_9,     KC_0,    _______},
-  {_______, _______, KC_BTN1, KC_BTN3, KC_BTN2, KC_HOME, KC_LEFT, KC_DOWN, KC_UP,   KC_RIGHT, KC_WH_U, KC_PGUP},
-  {_______, _______, _______, _______, _______, KC_END,  KC_MS_L, KC_MS_D, KC_MS_U, KC_MS_R,  KC_WH_D, KC_PGDOWN},
-  {_______, _______, _______, _______, _______, _______, _______, _______, _______, KC_SLCK,  KC_PAUS, KC_MNXT }
+  {_______, _______, MS_BTN1, MS_BTN3, MS_BTN2, KC_HOME, KC_LEFT, KC_DOWN, KC_UP,   KC_RIGHT, MS_WHLU, KC_PGUP},
+  {_______, _______, _______, _______, _______, KC_END,  MS_LEFT, MS_DOWN, MS_UP,   MS_RGHT,  MS_WHLD, KC_PGDN},
+  {_______, _______, _______, _______, _______, _______, _______, _______, _______, KC_SCRL,  KC_PAUS, KC_MNXT }
 },
 
 /* Lower
@@ -88,7 +77,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
   {KC_TILD, KC_EXLM, KC_AT,   KC_HASH, KC_DLR,  KC_PERC, KC_CIRC, KC_AMPR,  KC_ASTR, KC_LPRN, KC_RPRN, KC_DEL},
   {_______, KC_F1,   KC_F2,   KC_F3,   KC_F4,   KC_F5,   KC_F6,   KC_MINUS, KC_PLUS, KC_LCBR, KC_RCBR, KC_BSLS},
   {_______, KC_F7,   KC_F8,   KC_F9,   KC_F10,  KC_F11,  KC_F12,  KC_UNDS,  KC_EQL,  KC_LBRC, KC_RBRC, KC_PIPE},
-  {RESET,   _______, _______, _______, _______, _______, _______, _______,  _______, _______, _______, _______}
+  {QK_BOOT, _______, _______, _______, _______, _______, _______, _______,  _______, _______, _______, _______}
 },
 
 /* Macro
@@ -212,43 +201,39 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
   return true;
 }
 
-void matrix_init_user(void) {
-    #ifdef AUDIO_ENABLE
-        startup_user();
-    #endif
+#ifdef AUDIO_ENABLE
+void keyboard_post_init_user(void)
+{
+    wait_ms(20); // gets rid of tick
+    PLAY_SONG(tone_startup);
 }
 
-#ifdef AUDIO_ENABLE
-void led_set_user(uint8_t usb_led)
+bool led_update_user(led_t led_state)
 {
-    static uint8_t old_usb_led = 0;
+    static bool old_caps_lock = false;
 
-    _delay_ms(10); // gets rid of tick
+    wait_ms(10); // gets rid of tick
 
-    if ((usb_led & (1<<USB_LED_CAPS_LOCK)) && !(old_usb_led & (1<<USB_LED_CAPS_LOCK)))
+    if (led_state.caps_lock && !old_caps_lock)
     {
             // If CAPS LK LED is turning on...
             PLAY_SONG(tone_caps_on);
     }
-    else if (!(usb_led & (1<<USB_LED_CAPS_LOCK)) && (old_usb_led & (1<<USB_LED_CAPS_LOCK)))
+    else if (!led_state.caps_lock && old_caps_lock)
     {
             // If CAPS LK LED is turning off...
             PLAY_SONG(tone_caps_off);
     }
-    old_usb_led = usb_led;
+    old_caps_lock = led_state.caps_lock;
+    return true;
 }
 
-void startup_user()
-{
-    _delay_ms(20); // gets rid of tick
-    PLAY_SONG(tone_startup);
-}
-
-void shutdown_user()
+bool shutdown_user(bool jump_to_bootloader)
 {
     PLAY_SONG(tone_goodbye);
-    _delay_ms(150);
+    wait_ms(150);
     stop_all_notes();
+    return true;
 }
 
 void music_on_user(void)
